@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volleyball Lineup Utility</title>
+    <style>
+        /* --- Basic Setup --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 30px;
+            max-width: 1200px;
+            margin: 20px auto;
+        }
+
+        h1, h2, h3 {
+            color: #005a9c;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+
+        h1 {
+            grid-column: 1 / -1; /* Span both columns */
+            text-align: center;
+            margin-top: 0;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #c0c0c0;
+            cursor: not-allowed;
+        }
+
+        input[type="text"] {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: calc(100% - 22px); /* Full width minus padding/border */
+            margin-bottom: 10px;
+        }
+
+        /* --- Layout Panes --- */
+        #controls-pane {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #court-pane {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* --- Team Selector --- */
+        #team-selector {
+            margin-bottom: 20px;
+        }
+        #team-selector label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        #team-select {
+            padding: 8px;
+            font-size: 1.1em;
+            border-radius: 5px;
+        }
+
+        /* --- Player List --- */
+        #player-list-container h3 {
+            margin-top: 0;
+        }
+
+        #player-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        #player-list li {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 12px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            cursor: grab;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.1em;
+        }
+
+        #player-list li:active {
+            cursor: grabbing;
+        }
+        
+        #player-list li.dragging {
+            opacity: 0.5;
+            background: #cceeff;
+        }
+
+        .remove-btn {
+            color: #e74c3c;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+        }
+
+        .remove-btn:hover {
+            background-color: #fbeae8;
+        }
+
+        /* --- Volleyball Court --- */
+        #volleyball-court {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 150px);
+            border: 3px solid #000;
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            position: relative;
+        }
+
+        #net {
+            position: absolute;
+            top: -10px;
+            left: 0;
+            width: 100%;
+            height: 7px;
+            background: linear-gradient(to bottom, #555, #888, #555);
+            border-top: 2px solid #333;
+            border-bottom: 2px solid #333;
+        }
+
+        .court-position {
+            border: 1px dashed #777;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .pos-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            font-size: 0.9em;
+            color: #555;
+            font-weight: bold;
+        }
+
+        /* Highlight serving position */
+        #pos-6 {
+            background-color: #f0f8ff;
+        }
+
+        .player-card {
+            background: #e0f7fa;
+            border: 2px solid #007bff;
+            padding: 20px 25px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.2em;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .player-card.serving {
+            border-color: #28a745;
+            background: #d4edda;
+            color: #155724;
+        }
+
+        /* --- Sideline --- */
+        #sideline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+            padding: 10px;
+            border: 2px dashed #ccc;
+            min-height: 60px;
+            border-radius: 5px;
+        }
+
+        .sideline-card {
+            background: #f0f0f0;
+            border-color: #888;
+            font-size: 1em;
+            padding: 10px 15px;
+        }
+
+        /* --- Rotation Controls --- */
+        #rotation-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        #rotate-backward-btn {
+            background-color: #6c757d;
+        }
+        #rotate-backward-btn:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🏐 Volleyball Lineup Utility</h1>
+
+    <div id="controls-pane">
+        <div id="team-selector">
+            <label for="team-select">Current Team:</label>
+            <select id="team-select">
+                <option value="team1">Team 1</option>
+                <option value="team2">Team 2</option>
+                <option value="team3">Team 3</option>
+            </select>
+        </div>
+
+        <div id="player-manager">
+            <h2>Manage Players</h2>
+            <input type="text" id="player-name-input" placeholder="Enter player name (max 15)">
+            <button id="add-player-btn">Add Player</button>
+        </div>
+
+        <div id="player-list-container">
+            <h3>Player Order (Drag to reorder)</h3>
+            <ul id="player-list">
+                </ul>
+        </div>
+    </div>
+
+    <div id="court-pane">
+        <h2>Court Lineup</h2>
+
+        <div id="volleyball-court">
+            <div id="net"></div>
+            <div class="court-position" id="pos-1"><span class="pos-label">LF (1)</span></div>
+            <div class="court-position" id="pos-2"><span class="pos-label">MF (2)</span></div>
+            <div class="court-position" id="pos-3"><span class="pos-label">RF (3)</span></div>
+            <div class="court-position" id="pos-4"><span class="pos-label">LB (4)</span></div>
+            <div class="court-position" id="pos-5"><span class="pos-label">MB (5)</span></div>
+            <div class="court-position" id="pos-6"><span class="pos-label">RB (6) - Serve</span></div>
+        </div>
+
+        <h3>Sideline (Substitutes)</h3>
+        <div id="sideline">
+            </div>
+
+        <div id="rotation-controls">
+            <button id="rotate-backward-btn">Rotate Backward</button>
+            <button id="rotate-forward-btn">Rotate Forward</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const teamSelect = document.getElementById('team-select');
+            const playerNameInput = document.getElementById('player-name-input');
+            const addPlayerBtn = document.getElementById('add-player-btn');
+            const playerList = document.getElementById('player-list');
+            const courtPositions = [
+                document.getElementById('pos-1'),
+                document.getElementById('pos-2'),
+                document.getElementById('pos-3'),
+                document.getElementById('pos-4'),
+                document.getElementById('pos-5'),
+                document.getElementById('pos-6')
+            ];
+            const sideline = document.getElementById('sideline');
+            const rotateForwardBtn = document.getElementById('rotate-forward-btn');
+            const rotateBackwardBtn = document.getElementById('rotate-backward-btn');
+
+            // --- State ---
+            let currentTeam = 'team1';
+            let teams = {
+                team1: [],
+                team2: [],
+                team3: []
+            };
+
+            // --- Core Functions ---
+
+            /**
+             * Loads all data from Local Storage and renders the UI
+             */
+            function loadState() {
+                const savedTeams = localStorage.getItem('volleyballTeams');
+                if (savedTeams) {
+                    teams = JSON.parse(savedTeams);
+                }
+                
+                currentTeam = localStorage.getItem('currentVolleyballTeam') || 'team1';
+                teamSelect.value = currentTeam;
+
+                renderAll();
+            }
+
+            /**
+             * Saves the current state (all teams and current team) to Local Storage
+             */
+            function saveState() {
+                localStorage.setItem('volleyballTeams', JSON.stringify(teams));
+                localStorage.setItem('currentVolleyballTeam', currentTeam);
+            }
+
+            /**
+             * Re-renders both the player list and the court display
+             */
+            function renderAll() {
+                renderPlayerList();
+                renderCourt();
+            }
+
+            /**
+             * Updates the draggable player list
+             */
+            function renderPlayerList() {
+                playerList.innerHTML = ''; // Clear existing list
+                
+                const players = teams[currentTeam];
+                
+                // Disable add button if team is full
+                addPlayerBtn.disabled = players.length >= 15;
+                if (addPlayerBtn.disabled) {
+                    playerNameInput.placeholder = "Team is full (max 15)";
+                } else {
+                    playerNameInput.placeholder = "Enter player name (max 15)";
+                }
+
+                players.forEach((name, index) => {
+                    const li = document.createElement('li');
+                    li.draggable = true;
+                    li.dataset.index = index; // Store original index for drag/drop
+                    
+                    li.innerHTML = `
+                        <span class="player-name-text">${index + 1}. ${name}</span>
+                        <span class="remove-btn" title="Remove ${name}">❌</span>
+                    `;
+
+                    // Add remove button event listener
+                    li.querySelector('.remove-btn').addEventListener('click', (e) => {
+                        e.stopPropagation(); // Prevent drag from starting
+                        removePlayer(index);
+                    });
+                    
+                    playerList.appendChild(li);
+                });
+            }
+
+            /**
+             * Updates the court and sideline display
+             */
+            function renderCourt() {
+                // Clear all existing player cards
+                document.querySelectorAll('.player-card').forEach(card => card.remove());
+
+                const players = teams[currentTeam];
+
+                // Place first 6 players on court
+                players.slice(0, 6).forEach((name, index) => {
+                    const card = createPlayerCard(name);
+                    if (index + 1 === 6) { // Position 6 is server
+                        card.classList.add('serving');
+                    }
+                    courtPositions[index].appendChild(card);
+                });
+
+                // Place remaining players on sideline
+                players.slice(6).forEach(name => {
+                    const card = createPlayerCard(name);
+                    card.classList.add('sideline-card');
+                    sideline.appendChild(card);
+                });
+            }
+
+            /**
+             * Helper to create a player card element
+             */
+            function createPlayerCard(name) {
+                const card = document.createElement('div');
+                card.className = 'player-card';
+                card.textContent = name;
+                return card;
+            }
+
+            // --- Event Handlers ---
+
+            function handleTeamChange() {
+                currentTeam = teamSelect.value;
+                saveState(); // Save the new *current* team selection
+                renderAll(); // Re-render with the new team's data
+            }
+
+            function handleAddPlayer() {
+                const name = playerNameInput.value.trim();
+                const players = teams[currentTeam];
+
+                if (name && players.length < 15) {
+                    players.push(name);
+                    playerNameInput.value = '';
+                    saveState();
+                    renderAll();
+                }
+            }
+
+            function removePlayer(index) {
+                if (confirm(`Are you sure you want to remove ${teams[currentTeam][index]}?`)) {
+                    teams[currentTeam].splice(index, 1);
+                    saveState();
+                    renderAll();
+                }
+            }
+
+            /**
+             * Rotation Logic:
+             * - pos 3 (RF) moves to end of sideline
+             * - pos 2 (MF) moves to pos 3 (RF)
+             * - pos 1 (LF) moves to pos 2 (MF)
+             * - pos 4 (LB) moves to pos 1 (LF)
+             * - pos 5 (MB) moves to pos 4 (LB)
+             * - pos 6 (RB) moves to pos 5 (MB)
+             * - first sub (pos 7) moves to pos 6 (RB)
+             * - If < 7 players, pos 3 (RF) moves to pos 6 (RB)
+             */
+            function rotateForward() {
+                const players = teams[currentTeam];
+                if (players.length < 6) return; // Not enough players to rotate
+
+                const p1 = players[0]; // LF
+                const p2 = players[1]; // MF
+                const p3 = players[2]; // RF (rotates out)
+                const p4 = players[3]; // LB
+                const p5 = players[4]; // MB
+                const p6 = players[5]; // RB
+                const subs = players.slice(6);
+                
+                const playerIn = subs.length > 0 ? subs.shift() : p3; // Get first sub, or p3 if no subs
+
+                const newPlayerOrder = [];
+                newPlayerOrder[0] = p4;    // New LF is old LB
+                newPlayerOrder[1] = p1;    // New MF is old LF
+                newPlayerOrder[2] = p2;    // New RF is old MF
+                newPlayerOrder[3] = p5;    // New LB is old MB
+                newPlayerOrder[4] = p6;    // New MB is old RB
+                newPlayerOrder[5] = playerIn; // New RB is sub (or old RF)
+
+                // Add remaining subs
+                newPlayerOrder.push(...subs);
+                
+                // Add p3 to end of sub line ONLY if there were subs
+                if (subs.length > 0 || players.length > 6) {
+                    newPlayerOrder.push(p3);
+                }
+
+                teams[currentTeam] = newPlayerOrder;
+                saveState();
+                renderAll();
+            }
+
+            /**
+             * Reverse of the forward rotation
+             */
+            function rotateBackward() {
+                const players = teams[currentTeam];
+                if (players.length < 6) return;
+
+                const p1 = players[0]; // LF
+                const p2 = players[1]; // MF
+                const p3 = players[2]; // RF
+                const p4 = players[3]; // LB
+                const p5 = players[4]; // MB
+                const p6 = players[5]; // RB (rotates out)
+                const subs = players.slice(6);
+
+                const playerIn = subs.length > 0 ? subs.pop() : p6; // Get last sub, or p6 if no subs
+
+                const newPlayerOrder = [];
+                newPlayerOrder[0] = p2;    // New LF is old MF
+                newPlayerOrder[1] = p3;    // New MF is old RF
+                newPlayerOrder[2] = playerIn; // New RF is last sub (or old RB)
+                newPlayerOrder[3] = p1;    // New LB is old LF
+                newPlayerOrder[4] = p4;    // New MB is old LB
+                newPlayerOrder[5] = p5;    // New RB is old MB
+
+                // Add old RB (p6) to *front* of sub line ONLY if there were subs
+                if (subs.length > 0 || players.length > 6) {
+                    subs.unshift(p6);
+                }
+                
+                newPlayerOrder.push(...subs);
+
+                teams[currentTeam] = newPlayerOrder;
+                saveState();
+                renderAll();
+            }
+
+
+            // --- Drag-and-Drop Logic ---
+            let dragStartIndex;
+
+            function onDragStart(e) {
+                if (e.target.tagName === 'LI') {
+                    dragStartIndex = parseInt(e.target.dataset.index);
+                    e.target.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', dragStartIndex);
+                }
+            }
+
+            function onDragOver(e) {
+                e.preventDefault(); // Necessary to allow dropping
+                e.dataTransfer.dropEffect = 'move';
+            }
+
+            function onDrop(e) {
+                e.preventDefault();
+                const dragEndEl = e.target.closest('li');
+                if (!dragEndEl) return;
+                
+                const dragEndIndex = parseInt(dragEndEl.dataset.index);
+                
+                if (dragStartIndex === dragEndIndex) {
+                    document.querySelector('.dragging')?.classList.remove('dragging');
+                    return;
+                }
+
+                // Reorder the array
+                const players = teams[currentTeam];
+                const [movedPlayer] = players.splice(dragStartIndex, 1);
+                players.splice(dragEndIndex, 0, movedPlayer);
+
+                saveState();
+                renderAll(); // Re-render to show new order and clean up classes
+            }
+            
+            function onDragEnd(e) {
+                 document.querySelector('.dragging')?.classList.remove('dragging');
+            }
+
+            // --- Initial Setup ---
+            teamSelect.addEventListener('change', handleTeamChange);
+            addPlayerBtn.addEventListener('click', handleAddPlayer);
+            playerNameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleAddPlayer();
+            });
+            rotateForwardBtn.addEventListener('click', rotateForward);
+            rotateBackwardBtn.addEventListener('click', rotateBackward);
+            
+            // Add Drag/Drop listeners to the list container
+            playerList.addEventListener('dragstart', onDragStart);
+            playerList.addEventListener('dragover', onDragOver);
+            playerList.addEventListener('drop', onDrop);
+            playerList.addEventListener('dragend', onDragEnd);
+
+            // Load initial data
+            loadState();
+        });
+    </script>
+</body>
+</html>
